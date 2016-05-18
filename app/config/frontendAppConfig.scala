@@ -44,6 +44,7 @@ trait AppConfig {
   val ggSignInUrl: String
   val ptaFrontendUrl: String
   val breadcrumbPartialUrl: String
+  val ivRegistrationUrl: String
 }
 
 object FrontendAppConfig extends AppConfig with ServicesConfig {
@@ -81,4 +82,5 @@ object FrontendAppConfig extends AppConfig with ServicesConfig {
   private val ptaFrontendService: String = baseUrl("pertax-frontend")
   override lazy val ptaFrontendUrl: String = configuration.getString(s"breadcrumb-service.url").getOrElse("")
   override lazy val breadcrumbPartialUrl: String = s"$ptaFrontendService/personal-account/integration/main-content-header"
+  override val ivRegistrationUrl: String = configuration.getString(s"identity-verification-registration.host").getOrElse("")
 }

@@ -16,6 +16,8 @@
 
 package auth
 
+import java.net.URLEncoder
+
 import play.api.mvc.{Action, AnyContent, Request, Result}
 import config.AppConfig
 import uk.gov.hmrc.play.frontend.auth._
@@ -61,10 +63,15 @@ trait AuthorisedForPLA extends Actions {
 
   val plaAuthProvider = new PLAAuthProvider(postSignInRedirectUrl, applicationConfig.verifySignIn, applicationConfig.ggSignInUrl)
   val verifyProvider = new VerifyProvider(postSignInRedirectUrl, applicationConfig.verifySignIn)
+  val unauthPage = Some(s"${applicationConfig.ivRegistrationUrl}?origin=PLA&" +
+    s"completionURL=${URLEncoder.encode(postSignInRedirectUrl, "UTF-8")}&" +
+    s"failureURL=${URLEncoder.encode(applicationConfig.notAuthorisedRedirectUrl, "UTF-8")}" +
+    s"&confidenceLevel=200")
 
   trait PLARegime extends TaxRegime {
     override def isAuthorised(accounts: Accounts): Boolean = accounts.paye.isDefined
     override def authenticationType: AuthenticationProvider = plaAuthProvider
+    override def unauthorisedLandingPage = unauthPage
   }
 
   object PLAAnyRegime extends PLARegime
