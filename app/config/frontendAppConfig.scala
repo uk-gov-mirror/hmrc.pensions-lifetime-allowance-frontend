@@ -41,6 +41,7 @@ trait AppConfig {
   val existingProtectionsUrl: String
   val notAuthorisedRedirectUrl: String
   val verifySignIn = s"$citizenAuthHost/ida/login"
+  val oneTimeLoginUrl: String
   val ivUpliftUrl: String
   val twoFactorUrl: String
   val ggSignInUrl: String
@@ -77,6 +78,7 @@ object FrontendAppConfig extends AppConfig with ServicesConfig {
   override lazy val existingProtectionsUrl = configuration.getString("existingProtections.url").getOrElse("")
 
   override lazy val notAuthorisedRedirectUrl = configuration.getString("not-authorised-callback.url").getOrElse("")
+  override val oneTimeLoginUrl: String = configuration.getString(s"one-time-login.host").getOrElse("")
   override val ivUpliftUrl: String = configuration.getString(s"identity-verification-uplift.host").getOrElse("")
   override val ggSignInUrl: String = configuration.getString(s"government-gateway-sign-in.host").getOrElse("")
   override val twoFactorUrl: String = configuration.getString(s"two-factor.host").getOrElse("")

@@ -19,7 +19,7 @@ package auth
 import java.net.URI
 
 import play.api.mvc.Results._
-import play.api.mvc.{AnyContent, Request}
+import play.api.mvc.{Result, AnyContent, Request}
 import uk.gov.hmrc.play.frontend.auth._
 import uk.gov.hmrc.play.frontend.auth.connectors.domain.CredentialStrength
 
@@ -31,7 +31,6 @@ class PLAStrongCredentialPredicate(twoFactorAuthenticationUri: URI) extends Page
       case CredentialStrength.Strong => PageIsVisible
       case _ => PageBlocked(needsTwofactorAuthentication)
     })
-
 
   private val needsTwofactorAuthentication= Future.successful(Redirect(twoFactorAuthenticationUri.toString))
 }

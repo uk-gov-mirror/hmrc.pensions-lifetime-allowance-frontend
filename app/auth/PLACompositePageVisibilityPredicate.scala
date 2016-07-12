@@ -23,12 +23,20 @@ import uk.gov.hmrc.play.frontend.auth.{UpliftingIdentityConfidencePredicate, Pag
 
 class PLACompositePageVisibilityPredicate(postSignInRedirectUrl: String,
                                           notAuthorisedRedirectUrl: String,
+                                          oneTimeLoginUrl: String,
                                           ivUpliftUrl: String,
                                           twoFactorUrl: String) extends CompositePageVisibilityPredicate {
   override def children: Seq[PageVisibilityPredicate] = Seq (
+    new PLAUserHasNinoPredicate(oneTimeLoginURI),
     new PLAStrongCredentialPredicate(twoFactorURI),
     new UpliftingIdentityConfidencePredicate(L200, ivUpliftURI)
   )
+
+  private val oneTimeLoginURI =
+    new URI(s"${oneTimeLoginUrl}?origin=PLA&" +
+      s"completionURL=${URLEncoder.encode(postSignInRedirectUrl, "UTF-8")}&" +
+      s"failureURL=${URLEncoder.encode(notAuthorisedRedirectUrl, "UTF-8")}" +
+      s"&confidenceLevel=200")
 
   private val ivUpliftURI: URI =
     new URI(s"${ivUpliftUrl}?origin=PLA&" +

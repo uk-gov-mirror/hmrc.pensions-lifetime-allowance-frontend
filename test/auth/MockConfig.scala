@@ -40,6 +40,7 @@ object MockConfig extends AppConfig {
   override val existingProtectionsUrl: String = "/pla/existing-protections"
   override val notAuthorisedRedirectUrl: String = "/pla/not-authorised"
   override val verifySignIn = "/verify/login"
+  override val oneTimeLoginUrl: String = "/iv/registration"
   override val ivUpliftUrl: String = "/iv/uplift"
   override val twoFactorUrl: String = "/two-step-verification/register/"
   override val ggSignInUrl: String = "/gg/sign-in"
