@@ -108,7 +108,7 @@ class WithdrawProtectionControllerSpec extends UnitSpec with WithFakeApplication
     totalAmount = "£1,100,000"
   )
 
-  "In AmendsController calling the withdrawSummary action" when {
+  "In WithdrawProtectionController calling the withdrawSummary action" when {
 
     import testHelpers.AuthorisedFakeRequestTo
 
