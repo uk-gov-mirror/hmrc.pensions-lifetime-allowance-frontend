@@ -17,7 +17,7 @@
 package controllers
 
 import auth.{AuthorisedForPLA, PLAUser}
-import config.{FrontendAppConfig, FrontendAuthConnector}
+import config.{AppConfig, AuthClientAuthConnector, FrontendAppConfig, FrontendAuthConnector}
 import connectors.KeyStoreConnector
 import enums.ApplicationType
 import play.api.Logger
@@ -35,222 +35,273 @@ import forms.PSODetailsForm.psoDetailsForm
 import forms.PensionDebitsForm.pensionDebitsForm
 import models._
 import play.api.data.{Form, FormError}
-import play.api.mvc.{Action, AnyContent}
+import play.api.mvc.{Action, AnyContent, Request, Result}
 import views.html._
 import play.api.i18n.Messages.Implicits._
 import play.api.Play.current
+import uk.gov.hmrc.auth.core._
 
 import scala.util.{Failure, Success, Try}
 
 object IP2016Controller extends IP2016Controller {
 
     val keyStoreConnector = KeyStoreConnector
-    override lazy val applicationConfig = FrontendAppConfig
-    override lazy val authConnector = FrontendAuthConnector
-    override lazy val postSignInRedirectUrl = FrontendAppConfig.ipStartUrl
+    override lazy val appConfig = FrontendAppConfig
+    override lazy val authConnector: AuthConnector = AuthClientAuthConnector
 }
 
-trait IP2016Controller extends BaseController with AuthorisedForPLA {
+trait IP2016Controller extends BaseController with AuthorisedFunctions {
 
     val keyStoreConnector: KeyStoreConnector
+    val appConfig: AppConfig
 
-    //PENSIONS TAKEN
-    val pensionsTaken = AuthorisedByAny.async { implicit user => implicit request =>
-        keyStoreConnector.fetchAndGetFormData[PensionsTakenModel]("pensionsTaken").map {
-            case Some(data) => Ok(pages.ip2016.pensionsTaken(pensionsTakenForm.fill(data)))
-            case None => Ok(pages.ip2016.pensionsTaken(pensionsTakenForm))
+    def testMethod(body: Future[Result])(implicit request: Request[AnyContent]): Future[Result] = {
+        authorised(Enrolment("HMRC-NI") and ConfidenceLevel.L200) {
+            body
+        }.recoverWith {
+            case e: NoActiveSession => Future.successful(Redirect(appConfig.ggSignInUrl + s"?continue=${appConfig.ipStartUrl}&accountType=individual"))
+            case e: InsufficientEnrolments => Future.successful(InternalServerError("Missing Nino"))
+            case e: InsufficientConfidenceLevel => Future.successful(InternalServerError("Insufficient confidence level"))
         }
     }
 
-    val submitPensionsTaken = AuthorisedByAny.async { implicit user => implicit request =>
-        pensionsTakenForm.bindFromRequest.fold(
-            errors => {
-                val form = errors.copy(errors = errors.errors.map { er => FormError(er.key, Messages(er.message))})
-                Future.successful(BadRequest(pages.ip2016.pensionsTaken(form)))
-            },
-            success => {
-                keyStoreConnector.saveFormData("pensionsTaken", success).map{
-                    _ => success.pensionsTaken.get match {
-                        case "yes"  => Redirect(routes.IP2016Controller.pensionsTakenBefore())
-                        case "no"   => Redirect(routes.IP2016Controller.overseasPensions())
+    //PENSIONS TAKEN
+
+    val pensionsTaken = Action.async { implicit request =>
+      testMethod {
+          keyStoreConnector.fetchAndGetFormData[PensionsTakenModel]("pensionsTaken").map {
+              case Some(data) => Ok(pages.ip2016.pensionsTaken(pensionsTakenForm.fill(data)))
+              case None => Ok(pages.ip2016.pensionsTaken(pensionsTakenForm))
+          }
+      }
+    }
+
+
+    val submitPensionsTaken = Action.async { implicit request =>
+        authorised(Enrolment("HMRC-NI") and ConfidenceLevel.L200) {
+            pensionsTakenForm.bindFromRequest.fold(
+                errors => {
+                    val form = errors.copy(errors = errors.errors.map { er => FormError(er.key, Messages(er.message)) })
+                    Future.successful(BadRequest(pages.ip2016.pensionsTaken(form)))
+                },
+                success => {
+                    keyStoreConnector.saveFormData("pensionsTaken", success).map {
+                        _ => success.pensionsTaken.get match {
+                            case "yes" => Redirect(routes.IP2016Controller.pensionsTakenBefore())
+                            case "no" => Redirect(routes.IP2016Controller.overseasPensions())
+                        }
                     }
                 }
-            }
-        )
+            )
+        }
     }
 
 
     //PENSIONS TAKEN BEFORE
-    val pensionsTakenBefore = AuthorisedByAny.async { implicit user => implicit request =>
-
-        keyStoreConnector.fetchAndGetFormData[PensionsTakenBeforeModel]("pensionsTakenBefore").map {
-            case Some(data) => Ok(pages.ip2016.pensionsTakenBefore(pensionsTakenBeforeForm.fill(data)))
-            case _ => Ok(pages.ip2016.pensionsTakenBefore(pensionsTakenBeforeForm))
+    val pensionsTakenBefore = Action.async { implicit request =>
+        authorised(Enrolment("HMRC-NI") and ConfidenceLevel.L200) {
+            keyStoreConnector.fetchAndGetFormData[PensionsTakenBeforeModel]("pensionsTakenBefore").map {
+                case Some(data) => Ok(pages.ip2016.pensionsTakenBefore(pensionsTakenBeforeForm.fill(data)))
+                case _ => Ok(pages.ip2016.pensionsTakenBefore(pensionsTakenBeforeForm))
+            }
         }
     }
 
-    val submitPensionsTakenBefore = AuthorisedByAny.async { implicit user => implicit request =>
+    val submitPensionsTakenBefore = Action.async { implicit request =>
+        authorised(Enrolment("HMRC-NI") and ConfidenceLevel.L200) {
 
-        pensionsTakenBeforeForm.bindFromRequest.fold(
-            errors => {
-                val form = errors.copy(errors = errors.errors.map { er => FormError(er.key, Messages(er.message))})
-                Future.successful(BadRequest(pages.ip2016.pensionsTakenBefore(form)))
-            },
-            success => {
-                val validatedForm = PensionsTakenBeforeForm.validateForm(pensionsTakenBeforeForm.fill(success))
-                if(validatedForm.hasErrors) {
-                    Future.successful(BadRequest(pages.ip2016.pensionsTakenBefore(validatedForm)))
-                } else {
-                    keyStoreConnector.saveFormData("pensionsTakenBefore", success).flatMap{
-                        _=> Future.successful(Redirect(routes.IP2016Controller.pensionsTakenBetween()))}
+            pensionsTakenBeforeForm.bindFromRequest.fold(
+                errors => {
+                    val form = errors.copy(errors = errors.errors.map { er => FormError(er.key, Messages(er.message)) })
+                    Future.successful(BadRequest(pages.ip2016.pensionsTakenBefore(form)))
+                },
+                success => {
+                    val validatedForm = PensionsTakenBeforeForm.validateForm(pensionsTakenBeforeForm.fill(success))
+                    if (validatedForm.hasErrors) {
+                        Future.successful(BadRequest(pages.ip2016.pensionsTakenBefore(validatedForm)))
+                    } else {
+                        keyStoreConnector.saveFormData("pensionsTakenBefore", success).flatMap {
+                            _ => Future.successful(Redirect(routes.IP2016Controller.pensionsTakenBetween()))
+                        }
 
+                    }
                 }
-            }
-        )
+            )
+        }
     }
 
 
     //PENSIONS TAKEN BETWEEN
-    val pensionsTakenBetween = AuthorisedByAny.async { implicit user => implicit request =>
+    val pensionsTakenBetween = Action.async { implicit request =>
+        authorised(Enrolment("HMRC-NI") and ConfidenceLevel.L200) {
 
-        keyStoreConnector.fetchAndGetFormData[PensionsTakenBetweenModel]("pensionsTakenBetween").map {
-            case Some(data) => Ok(pages.ip2016.pensionsTakenBetween(pensionsTakenBetweenForm.fill(data)))
-            case _ => Ok(pages.ip2016.pensionsTakenBetween(pensionsTakenBetweenForm))
+            keyStoreConnector.fetchAndGetFormData[PensionsTakenBetweenModel]("pensionsTakenBetween").map {
+                case Some(data) => Ok(pages.ip2016.pensionsTakenBetween(pensionsTakenBetweenForm.fill(data)))
+                case _ => Ok(pages.ip2016.pensionsTakenBetween(pensionsTakenBetweenForm))
+            }
         }
     }
 
-    val submitPensionsTakenBetween = AuthorisedByAny.async { implicit user => implicit request =>
+    val submitPensionsTakenBetween = Action.async { implicit request =>
+        authorised(Enrolment("HMRC-NI") and ConfidenceLevel.L200) {
 
-        pensionsTakenBetweenForm.bindFromRequest.fold(
-            errors => {
-                val form = errors.copy(errors = errors.errors.map { er => FormError(er.key, Messages(er.message))})
-                Future.successful(BadRequest(pages.ip2016.pensionsTakenBetween(form)))
-            },
-            success => {
-                val validatedForm = PensionsTakenBetweenForm.validateForm(pensionsTakenBetweenForm.fill(success))
-                if(validatedForm.hasErrors) {
-                    Future.successful(BadRequest(pages.ip2016.pensionsTakenBetween(validatedForm)))
-                } else {
-                    keyStoreConnector.saveFormData("pensionsTakenBetween", success).flatMap{
-                        _=> Future.successful(Redirect(routes.IP2016Controller.overseasPensions()))}
+            pensionsTakenBetweenForm.bindFromRequest.fold(
+                errors => {
+                    val form = errors.copy(errors = errors.errors.map { er => FormError(er.key, Messages(er.message)) })
+                    Future.successful(BadRequest(pages.ip2016.pensionsTakenBetween(form)))
+                },
+                success => {
+                    val validatedForm = PensionsTakenBetweenForm.validateForm(pensionsTakenBetweenForm.fill(success))
+                    if (validatedForm.hasErrors) {
+                        Future.successful(BadRequest(pages.ip2016.pensionsTakenBetween(validatedForm)))
+                    } else {
+                        keyStoreConnector.saveFormData("pensionsTakenBetween", success).flatMap {
+                            _ => Future.successful(Redirect(routes.IP2016Controller.overseasPensions()))
+                        }
+                    }
                 }
-            }
-        )
+            )
+        }
     }
 
 
     //OVERSEAS PENSIONS
-    val overseasPensions = AuthorisedByAny.async { implicit user => implicit request =>
+    val overseasPensions = Action.async { implicit request =>
+        authorised(Enrolment("HMRC-NI") and ConfidenceLevel.L200) {
 
-        keyStoreConnector.fetchAndGetFormData[OverseasPensionsModel]("overseasPensions").map {
-            case Some(data) => Ok(pages.ip2016.overseasPensions(overseasPensionsForm.fill(data)))
-            case _ => Ok(pages.ip2016.overseasPensions(overseasPensionsForm))
+            keyStoreConnector.fetchAndGetFormData[OverseasPensionsModel]("overseasPensions").map {
+                case Some(data) => Ok(pages.ip2016.overseasPensions(overseasPensionsForm.fill(data)))
+                case _ => Ok(pages.ip2016.overseasPensions(overseasPensionsForm))
+            }
         }
     }
 
-    val submitOverseasPensions: Action[AnyContent] = AuthorisedByAny.async { implicit user =>implicit request =>
+    val submitOverseasPensions: Action[AnyContent] = Action.async { implicit request =>
+        authorised(Enrolment("HMRC-NI") and ConfidenceLevel.L200) {
 
-        overseasPensionsForm.bindFromRequest.fold(
-            errors => {
-                val form = errors.copy(errors = errors.errors.map { er => FormError(er.key, Messages(er.message))})
-                Future.successful(BadRequest(pages.ip2016.overseasPensions(form)))},
-            success => {
-                val validatedForm = OverseasPensionsForm.validateForm(overseasPensionsForm.fill(success))
-                if(validatedForm.hasErrors) {
-                    Future.successful(BadRequest(pages.ip2016.overseasPensions(validatedForm)))
-                } else {
-                    keyStoreConnector.saveFormData("overseasPensions", success).flatMap{
-                        _=> Future.successful(Redirect(routes.IP2016Controller.currentPensions()))}
+            overseasPensionsForm.bindFromRequest.fold(
+                errors => {
+                    val form = errors.copy(errors = errors.errors.map { er => FormError(er.key, Messages(er.message)) })
+                    Future.successful(BadRequest(pages.ip2016.overseasPensions(form)))
+                },
+                success => {
+                    val validatedForm = OverseasPensionsForm.validateForm(overseasPensionsForm.fill(success))
+                    if (validatedForm.hasErrors) {
+                        Future.successful(BadRequest(pages.ip2016.overseasPensions(validatedForm)))
+                    } else {
+                        keyStoreConnector.saveFormData("overseasPensions", success).flatMap {
+                            _ => Future.successful(Redirect(routes.IP2016Controller.currentPensions()))
+                        }
+                    }
                 }
-            }
-        )
+            )
+        }
     }
 
 
     //CURRENT PENSIONS
-    val currentPensions = AuthorisedByAny.async { implicit user => implicit request =>
+    val currentPensions = Action.async { implicit request =>
+        authorised(Enrolment("HMRC-NI") and ConfidenceLevel.L200) {
 
-        keyStoreConnector.fetchAndGetFormData[CurrentPensionsModel]("currentPensions").map {
-            case Some(data) => Ok(pages.ip2016.currentPensions(currentPensionsForm.fill(data)))
-            case _ => Ok(pages.ip2016.currentPensions(currentPensionsForm))
+            keyStoreConnector.fetchAndGetFormData[CurrentPensionsModel]("currentPensions").map {
+                case Some(data) => Ok(pages.ip2016.currentPensions(currentPensionsForm.fill(data)))
+                case _ => Ok(pages.ip2016.currentPensions(currentPensionsForm))
+            }
         }
     }
 
-    val submitCurrentPensions = AuthorisedByAny.async { implicit user => implicit request =>
+    val submitCurrentPensions = Action.async { implicit request =>
+        authorised(Enrolment("HMRC-NI") and ConfidenceLevel.L200) {
 
-        currentPensionsForm.bindFromRequest.fold(
-            errors => {
-                val form = errors.copy(errors = errors.errors.map { er => FormError(er.key, Messages(er.message))})
-                Future.successful(BadRequest(pages.ip2016.currentPensions(form)))},
-            success => {
-                keyStoreConnector.saveFormData("currentPensions", success).flatMap{
-                    _=> Future.successful(Redirect(routes.IP2016Controller.pensionDebits()))}
-            }
-        )
+            currentPensionsForm.bindFromRequest.fold(
+                errors => {
+                    val form = errors.copy(errors = errors.errors.map { er => FormError(er.key, Messages(er.message)) })
+                    Future.successful(BadRequest(pages.ip2016.currentPensions(form)))
+                },
+                success => {
+                    keyStoreConnector.saveFormData("currentPensions", success).flatMap {
+                        _ => Future.successful(Redirect(routes.IP2016Controller.pensionDebits()))
+                    }
+                }
+            )
+        }
     }
 
 
     //PENSION DEBITS
-    val pensionDebits = AuthorisedByAny.async { implicit user => implicit request =>
-        keyStoreConnector.fetchAndGetFormData[PensionDebitsModel]("pensionDebits").map {
-            case Some(data) => Ok(pages.ip2016.pensionDebits(pensionDebitsForm.fill(data)))
-            case None => Ok(pages.ip2016.pensionDebits(pensionDebitsForm))
+    val pensionDebits = Action.async { implicit request =>
+        authorised(Enrolment("HMRC-NI") and ConfidenceLevel.L200) {
+            keyStoreConnector.fetchAndGetFormData[PensionDebitsModel]("pensionDebits").map {
+                case Some(data) => Ok(pages.ip2016.pensionDebits(pensionDebitsForm.fill(data)))
+                case None => Ok(pages.ip2016.pensionDebits(pensionDebitsForm))
+            }
         }
     }
 
-    val submitPensionDebits = AuthorisedByAny.async { implicit user => implicit request =>
-        pensionDebitsForm.bindFromRequest.fold(
-            errors => {
-                val form = errors.copy(errors = errors.errors.map { er => FormError(er.key, Messages(er.message))})
-                Future.successful(BadRequest(pages.ip2016.pensionDebits(form)))
-            },
-            success => {
-                keyStoreConnector.saveFormData("pensionDebits", success).map{
-                    _ => success.pensionDebits.get match {
-                    case "yes" => Redirect (routes.IP2016Controller.psoDetails () )
-                    case "no" => Redirect (routes.SummaryController.summaryIP16 () )
+    val submitPensionDebits = Action.async { implicit request =>
+        authorised(Enrolment("HMRC-NI") and ConfidenceLevel.L200) {
+            pensionDebitsForm.bindFromRequest.fold(
+                errors => {
+                    val form = errors.copy(errors = errors.errors.map { er => FormError(er.key, Messages(er.message)) })
+                    Future.successful(BadRequest(pages.ip2016.pensionDebits(form)))
+                },
+                success => {
+                    keyStoreConnector.saveFormData("pensionDebits", success).map {
+                        _ => success.pensionDebits.get match {
+                            case "yes" => Redirect(routes.IP2016Controller.psoDetails())
+                            case "no" => Redirect(routes.SummaryController.summaryIP16())
 
+                        }
                     }
                 }
-            }
-        )
-}
-
-    //PENSION SHARING ORDER DETAILS
-    val psoDetails = AuthorisedByAny.async { implicit user => implicit request =>
-        keyStoreConnector.fetchAndGetFormData[PSODetailsModel]("psoDetails").map {
-            case Some(data) => Ok(pages.ip2016.psoDetails(psoDetailsForm.fill(data)))
-            case _          => Ok(pages.ip2016.psoDetails(psoDetailsForm))
+            )
         }
     }
 
-    val submitPSODetails = AuthorisedByAny.async { implicit user => implicit request =>
+    //PENSION SHARING ORDER DETAILS
+    val psoDetails = Action.async { implicit request =>
+        authorised(Enrolment("HMRC-NI") and ConfidenceLevel.L200) {
+            keyStoreConnector.fetchAndGetFormData[PSODetailsModel]("psoDetails").map {
+                case Some(data) => Ok(pages.ip2016.psoDetails(psoDetailsForm.fill(data)))
+                case _ => Ok(pages.ip2016.psoDetails(psoDetailsForm))
+            }
+        }
+    }
 
+    val submitPSODetails = Action.async { implicit request =>
+        authorised(Enrolment("HMRC-NI") and ConfidenceLevel.L200) {
             psoDetailsForm.bindFromRequest.fold(
                 errors => {
-                    val form = errors.copy(errors = errors.errors.map { er => FormError(er.key, Messages(er.message))})
-                    Future.successful(BadRequest(pages.ip2016.psoDetails(PSODetailsForm.validateForm(form))))},
+                    val form = errors.copy(errors = errors.errors.map { er => FormError(er.key, Messages(er.message)) })
+                    Future.successful(BadRequest(pages.ip2016.psoDetails(PSODetailsForm.validateForm(form))))
+                },
                 form => {
                     val validatedForm =
                         PSODetailsForm.validateForm(psoDetailsForm.fill(form))
                     if (validatedForm.hasErrors) {
                         Future.successful(BadRequest(pages.ip2016.psoDetails(validatedForm)))
                     } else {
-                        keyStoreConnector.saveFormData(s"psoDetails", form).flatMap{
-                            _=> Future.successful(Redirect(routes.SummaryController.summaryIP16()))}
+                        keyStoreConnector.saveFormData(s"psoDetails", form).flatMap {
+                            _ => Future.successful(Redirect(routes.SummaryController.summaryIP16()))
+                        }
                     }
                 }
             )
+        }
     }
 
-    val removePsoDetails = AuthorisedByAny.async {implicit user => implicit request =>
-        Future(Ok(pages.ip2016.removePsoDetails()))
+    val removePsoDetails = Action.async { implicit request =>
+        authorised(Enrolment("HMRC-NI") and ConfidenceLevel.L200) {
+            Future(Ok(pages.ip2016.removePsoDetails()))
+        }
     }
 
-    val submitRemovePsoDetails = AuthorisedByAny.async { implicit user => implicit request =>
-      val updatedModel = PensionDebitsModel(Some("no"))
-      keyStoreConnector.saveData[PensionDebitsModel]("pensionDebits", updatedModel)
-      Future(Redirect(routes.SummaryController.summaryIP16()))
+    val submitRemovePsoDetails = Action.async { implicit request =>
+        authorised(Enrolment("HMRC-NI") and ConfidenceLevel.L200) {
+            val updatedModel = PensionDebitsModel(Some("no"))
+            keyStoreConnector.saveData[PensionDebitsModel]("pensionDebits", updatedModel)
+            Future(Redirect(routes.SummaryController.summaryIP16()))
+        }
     }
 
 }
