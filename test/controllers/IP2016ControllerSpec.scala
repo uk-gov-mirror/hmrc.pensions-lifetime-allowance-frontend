@@ -28,6 +28,7 @@ import org.mockito.Matchers
 import org.mockito.Mockito._
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.mock.MockitoSugar
+import play.api.{Configuration, Environment}
 import play.api.Play.current
 import play.api.i18n.Messages
 import play.api.i18n.Messages.Implicits._
@@ -57,6 +58,10 @@ class IP2016ControllerSpec extends UnitSpec with WithFakeApplication with Mockit
         override lazy val appConfig = MockConfig
         override lazy val authConnector = mockPlayAuthConnector
         override val keyStoreConnector: KeyStoreConnector = mockKeyStoreConnector
+
+        override def config: Configuration = mock[Configuration]
+
+        override def env: Environment = mock[Environment]
     }
 
     val sessionId = UUID.randomUUID.toString

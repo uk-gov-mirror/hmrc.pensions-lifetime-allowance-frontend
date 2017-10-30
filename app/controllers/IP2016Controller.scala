@@ -20,7 +20,7 @@ import auth.{AuthorisedForPLA, PLAUser}
 import config.{AppConfig, AuthClientAuthConnector, FrontendAppConfig, FrontendAuthConnector}
 import connectors.KeyStoreConnector
 import enums.ApplicationType
-import play.api.Logger
+import play.api.{Configuration, Environment, Logger, Play}
 import play.api.i18n.{Lang, Messages}
 import uk.gov.hmrc.play.frontend.controller.FrontendController
 
@@ -40,6 +40,7 @@ import views.html._
 import play.api.i18n.Messages.Implicits._
 import play.api.Play.current
 import uk.gov.hmrc.auth.core._
+import uk.gov.hmrc.play.frontend.config.AuthRedirects
 
 import scala.util.{Failure, Success, Try}
 
@@ -48,9 +49,13 @@ object IP2016Controller extends IP2016Controller {
     val keyStoreConnector = KeyStoreConnector
     override lazy val appConfig = FrontendAppConfig
     override lazy val authConnector: AuthConnector = AuthClientAuthConnector
+
+    override def config: Configuration = Play.current.configuration
+
+    override def env: Environment = Play.current.injector.instanceOf[Environment]
 }
 
-trait IP2016Controller extends BaseController with AuthorisedFunctions {
+trait IP2016Controller extends BaseController with AuthorisedFunctions with AuthRedirects {
 
     val keyStoreConnector: KeyStoreConnector
     val appConfig: AppConfig
@@ -59,9 +64,9 @@ trait IP2016Controller extends BaseController with AuthorisedFunctions {
         authorised(Enrolment("HMRC-NI") and ConfidenceLevel.L200) {
             body
         }.recoverWith {
-            case e: NoActiveSession => Future.successful(Redirect(appConfig.ggSignInUrl + s"?continue=${appConfig.ipStartUrl}&accountType=individual"))
-            case e: InsufficientEnrolments => Future.successful(InternalServerError("Missing Nino"))
-            case e: InsufficientConfidenceLevel => Future.successful(InternalServerError("Insufficient confidence level"))
+            case e: NoActiveSession => Future.successful(toGGLogin(appConfig.ipStartUrl))
+            case e: InsufficientEnrolments => Future.successful(Redirect(s"$personalIVUrl?origin=${config.getString("appname")}&confidenceLevel=200&completionURL=${appConfig.ipStartUrl}&failureURL=${appConfig.notAuthorisedRedirectUrl}"))
+            case e: InsufficientConfidenceLevel => Future.successful(Redirect(s"$personalIVUrl?origin=${config.getString("appname")}&confidenceLevel=200&completionURL=${appConfig.ipStartUrl}&failureURL=${appConfig.notAuthorisedRedirectUrl}"))
         }
     }
 
