@@ -65,8 +65,16 @@ trait IP2016Controller extends BaseController with AuthorisedFunctions with Auth
             body
         }.recoverWith {
             case e: NoActiveSession => Future.successful(toGGLogin(appConfig.ipStartUrl))
-            case e: InsufficientEnrolments => Future.successful(Redirect(s"$personalIVUrl?origin=${config.getString("appname")}&confidenceLevel=200&completionURL=${appConfig.ipStartUrl}&failureURL=${appConfig.notAuthorisedRedirectUrl}"))
-            case e: InsufficientConfidenceLevel => Future.successful(Redirect(s"$personalIVUrl?origin=${config.getString("appname")}&confidenceLevel=200&completionURL=${appConfig.ipStartUrl}&failureURL=${appConfig.notAuthorisedRedirectUrl}"))
+            case e: InsufficientEnrolments => Future.successful(Redirect(s"$personalIVUrl?" +
+              s"origin=${config.getString("appName")}" +
+              s"&confidenceLevel=200" +
+              s"&completionURL=${appConfig.ipStartUrl}" +
+              s"&failureURL=${appConfig.notAuthorisedRedirectUrl}"))
+            case e: InsufficientConfidenceLevel => Future.successful(Redirect(s"$personalIVUrl?" +
+              s"origin=${config.getString("appname")}" +
+              s"&confidenceLevel=200" +
+              s"&completionURL=${appConfig.ipStartUrl}" +
+              s"&failureURL=${appConfig.notAuthorisedRedirectUrl}"))
         }
     }
 
