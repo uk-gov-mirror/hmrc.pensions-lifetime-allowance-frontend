@@ -17,7 +17,7 @@
 package controllers
 
 import auth.{AuthorisedForPLA, PLAUser}
-import config.{AppConfig, AuthClientAuthConnector, FrontendAppConfig, FrontendAuthConnector}
+import config.{AppConfig, AuthClientConnector, FrontendAppConfig, FrontendAuthConnector}
 import connectors.KeyStoreConnector
 import enums.ApplicationType
 import play.api.{Configuration, Environment, Logger, Play}
@@ -48,7 +48,7 @@ object IP2016Controller extends IP2016Controller {
 
     val keyStoreConnector = KeyStoreConnector
     override lazy val appConfig = FrontendAppConfig
-    override lazy val authConnector: AuthConnector = AuthClientAuthConnector
+    override lazy val authConnector: AuthConnector = AuthClientConnector
 
     override def config: Configuration = Play.current.configuration
 

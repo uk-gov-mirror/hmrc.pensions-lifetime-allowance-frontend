@@ -21,7 +21,7 @@ import java.util.UUID
 
 import auth._
 import com.kenshoo.play.metrics.PlayModule
-import config.{AuthClientAuthConnector, FrontendAuthConnector}
+import config.{AuthClientConnector, FrontendAuthConnector}
 import connectors.KeyStoreConnector
 import models._
 import org.mockito.Matchers
@@ -102,7 +102,7 @@ class IP2016ControllerSpec extends UnitSpec with WithFakeApplication with Mockit
     ///////////////////////////////////////////////
     "IP2016Controller should be correctly initialised" in {
         IP2016Controller.keyStoreConnector shouldBe KeyStoreConnector
-        IP2016Controller.authConnector shouldBe AuthClientAuthConnector
+        IP2016Controller.authConnector shouldBe AuthClientConnector
     }
 
     ///////////////////////////////////////////////

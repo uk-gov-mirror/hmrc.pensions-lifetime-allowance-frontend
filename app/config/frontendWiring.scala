@@ -52,7 +52,7 @@ object PLASessionCache extends SessionCache with ServicesConfig with AppName{
   override lazy val http = new WSHttp with WSGet
 }
 
-object AuthClientAuthConnector extends PlayAuthConnector with ServicesConfig {
+object AuthClientConnector extends PlayAuthConnector with ServicesConfig {
   override val serviceUrl: String = baseUrl("auth")
   override def http: CorePost = WSHttp
 }
