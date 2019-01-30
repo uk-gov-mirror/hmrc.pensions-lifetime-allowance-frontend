@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package config
 
+import akka.actor.ActorSystem
 import play.api.Mode.Mode
 import play.api.{Configuration, Play}
 import uk.gov.hmrc.auth.core.PlayAuthConnector
@@ -52,6 +53,7 @@ trait WSHttp extends HttpGet with WSGet with HttpPut with WSPut with
 }
 
 object WSHttp extends WSHttp {
+  override protected def actorSystem: ActorSystem = Play.current.actorSystem
 }
 
 object PLASessionCache extends SessionCache with ServicesConfig with AppName with PlaConfig {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,6 @@ import uk.gov.hmrc.play.partials.FormPartialRetriever
 import uk.gov.hmrc.http.HttpGet
 
 class PlaFormPartialRetriever @Inject()(sessionCookieCryptoFilterWrapper: SessionCookieCryptoFilterWrapper) extends FormPartialRetriever {
-  override def httpGet: HttpGet with WSHttp = new HttpGet with WSHttp
-  override val crypto = sessionCookieCryptoFilterWrapper.encryptCookieString _
+  override def httpGet: HttpGet with WSHttp = WSHttp
+  override val crypto: String => String = sessionCookieCryptoFilterWrapper.encryptCookieString
 }
