@@ -21,6 +21,7 @@ import connectors.CitizenDetailsConnector
 import constructors.display.DisplayConstructors
 import models.ProtectionModel
 import play.api.Logging
+import play.api.i18n.Messages
 import play.api.mvc.*
 import services.SessionCacheService
 import uk.gov.hmrc.play.bootstrap.frontend.controller.FrontendController
@@ -37,11 +38,13 @@ class PrintController @Inject() (
     printProtectionView: printProtection,
     mcc: MessagesControllerComponents,
     authActions: AuthActions
-)(implicit val ec: ExecutionContext)
+)(using ExecutionContext)
     extends FrontendController(mcc)
     with Logging {
 
-  def printView: Action[AnyContent] = authActions.authenticateWithNino.async { implicit request =>
+  def printView: Action[AnyContent] = authActions.authenticateWithNino.async { request =>
+    given MessagesRequest[?] = request
+
     for {
       protectionModel <- sessionCacheService.fetchOpenProtection
       result          <- routePrintView(protectionModel, request.nino)
@@ -51,7 +54,7 @@ class PrintController @Inject() (
   private def routePrintView(
       protectionModel: Option[ProtectionModel],
       nino: String
-  )(implicit request: RequestHeader, messages: Messages): Future[Result] =
+  )(using RequestHeader, Messages): Future[Result] =
     protectionModel match {
       case Some(model) =>
         citizenDetailsConnector.getPersonDetails(nino).map { personalDetailsModel =>

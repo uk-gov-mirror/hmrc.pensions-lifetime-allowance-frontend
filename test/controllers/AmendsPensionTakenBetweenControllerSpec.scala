@@ -25,11 +25,7 @@ import org.apache.pekko.stream.Materializer
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.*
-import org.scalatest.BeforeAndAfterEach
-import org.scalatestplus.mockito.MockitoSugar
-import play.api.Environment
-import play.api.i18n.{Lang, Messages}
+import play.api.i18n.Messages
 import play.api.mvc.{AnyContent, Result}
 import play.api.test.FakeRequest
 import play.api.test.Helpers.*
@@ -51,47 +47,40 @@ class AmendsPensionTakenBetweenControllerSpec
     with AuthMocks
     with AmendProtectionModelTestData {
 
-  implicit val fakeRequest: FakeRequest[AnyContent] = FakeRequest()
+  private val fakeRequest: FakeRequest[AnyContent] = FakeRequest()
 
-  implicit val messages: Messages = mcc.messagesApi.preferred(fakeRequest)
+  private val messages: Messages = mcc.messagesApi.preferred(fakeRequest)
 
-  implicit val appConfig: AppConfig           = inject[AppConfig]
-  implicit val system: ActorSystem            = ActorSystem()
-  implicit val mockMaterializer: Materializer = mock[Materializer]
-  implicit val mockLang: Lang                 = mock[Lang]
-  implicit val formWithCSRF: FormWithCSRF     = inject[FormWithCSRF]
-  implicit val ec: ExecutionContext           = inject[ExecutionContext]
+  private val executionContext: ExecutionContext = ExecutionContext.global
 
-  val mockSessionCacheService: SessionCacheService = mock[SessionCacheService]
-  val technicalErrorView: technicalError           = inject[technicalError]
+  private val technicalErrorView: technicalError = inject[technicalError]
 
-  val amendIP16PensionsTakenBetweenView: amendIP16PensionsTakenBetween =
+  private val amendIP16PensionsTakenBetweenView: amendIP16PensionsTakenBetween =
     inject[amendIP16PensionsTakenBetween]
 
-  val amendIP14PensionsTakenBetweenView: amendIP14PensionsTakenBetween =
+  private val amendIP14PensionsTakenBetweenView: amendIP14PensionsTakenBetween =
     inject[amendIP14PensionsTakenBetween]
 
-  val mockEnv: Environment = mock[Environment]
+  private val mockEnv: Environment = mock[Environment]
 
   override def beforeEach(): Unit = {
     super.beforeEach()
 
-    reset(mockSessionCacheService)
     reset(mockEnv)
   }
 
-  val controller = new AmendsPensionTakenBetweenController(
+  private val controller = new AmendsPensionTakenBetweenController(
     mockSessionCacheService,
     mcc,
     authActions,
     technicalErrorView,
     amendIP16PensionsTakenBetweenView,
     amendIP14PensionsTakenBetweenView
-  )
+  )(using executionContext)
 
-  val sessionId: String  = UUID.randomUUID.toString
-  val mockUsername       = "mockuser"
-  val mockUserId: String = "/auth/oid/" + mockUsername
+  private val sessionId: String  = UUID.randomUUID.toString
+  private val mockUsername       = "mockuser"
+  private val mockUserId: String = "/auth/oid/" + mockUsername
 
   "In AmendsPensionTakenBetweenController calling the .amendPensionsTakenBetween action" when {
     "not supplied with a stored model" in {

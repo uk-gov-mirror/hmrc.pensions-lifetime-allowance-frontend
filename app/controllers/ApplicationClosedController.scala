@@ -27,9 +27,21 @@ class ApplicationClosedController @Inject() (
     mcc: MessagesControllerComponents,
     applicationClosed2014: applicationClosed2014,
     applicationClosed2016: applicationClosed2016
-) extends FrontendController(mcc) {
+) extends FrontendController(mcc)
 
-  def showApplicationClosed2014(): Action[AnyContent] = Action(implicit request => Ok(applicationClosed2014()))
+  def showApplicationClosed2014(): Action[AnyContent] = Action { request =>
+    given Request[?] = request
 
-  def showApplicationClosed2016(): Action[AnyContent] = Action(implicit request => Ok(applicationClosed2016()))
+  def showApplicationClosed2014(): Action[AnyContent] = Action { request =>
+    given MessagesRequest[?] = request
+
+    Ok(applicationClosed2014())
+  }
+
+  def showApplicationClosed2016(): Action[AnyContent] = Action { request =>
+    given MessagesRequest[?] = request
+
+    Ok(applicationClosed2016())
+  }
+
 }
