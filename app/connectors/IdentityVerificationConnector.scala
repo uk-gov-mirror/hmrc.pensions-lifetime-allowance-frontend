@@ -20,8 +20,10 @@ import config.AppConfig
 import enums.IdentityVerificationResult
 import play.api.libs.json.{Json, OFormat}
 import services.MetricsService
+import uk.gov.hmrc.http.{HeaderCarrier, HttpReads, HttpReadsInstances, HttpResponse, StringContextOps}
 import uk.gov.hmrc.http.client.HttpClientV2
 
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 

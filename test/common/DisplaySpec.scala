@@ -27,10 +27,10 @@ import java.util.Locale
 
 class DisplaySpec extends FakeApplication with MockitoSugar {
 
-  val messagesApi: MessagesApi = inject[MessagesControllerComponents].messagesApi
+  private val messagesApi: MessagesApi = inject[MessagesApi]
 
-  val englishMessages: Messages = MessagesImpl(Lang(Locale.ENGLISH), messagesApi)
-  val welshMessages: Messages   = MessagesImpl(Lang(Locale.forLanguageTag("cy")), messagesApi)
+  private val englishMessages: Messages = MessagesImpl(Lang(Locale.ENGLISH), messagesApi)
+  private val welshMessages: Messages   = MessagesImpl(Lang(Locale.forLanguageTag("cy")), messagesApi)
 
   "currencyDisplayString" should {
 

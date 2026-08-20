@@ -34,14 +34,11 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatestplus.mockito.MockitoSugar
 import play.api.http.HeaderNames.CACHE_CONTROL
-import play.api.libs.json.Json
-import play.api.mvc.{AnyContent, Result}
+import play.api.mvc.{AnyContentAsEmpty, Result}
 import play.api.test.FakeRequest
 import play.api.test.Helpers.*
-import services.SessionCacheService
 import testHelpers.{FakeApplication, MockSessionCacheService}
 import testdata.PlaConnectorTestData.readProtectionsResponse
-import uk.gov.hmrc.http.HttpResponse
 import views.html.pages.existingProtections.existingProtections
 import views.html.pages.fallback.technicalError
 import views.html.pages.result.manualCorrespondenceNeeded
@@ -56,12 +53,6 @@ class ReadProtectionsControllerSpec
     with ModelGenerators
     with MockSessionCacheService
     with BeforeAndAfterEach {
-
-  private val testSuccessResponse =
-    HttpResponse(status = 200, json = Json.parse("""{"thisJson":"doesNotMatter"}"""), headers = Map.empty)
-
-  private val testMCNeededResponse      = HttpResponse(423, "")
-  private val testUpstreamErrorResponse = HttpResponse(503, "")
 
   private val testNino = "AB123456A"
 
@@ -82,7 +73,7 @@ class ReadProtectionsControllerSpec
 
   private val mockExistingProtections: existingProtections = inject[existingProtections]
 
-  private val fakeRequest: FakeRequest[AnyContent] = FakeRequest()
+  private val fakeRequest: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
 
   override def beforeEach(): Unit = {
     reset(mockPlaConnector)
@@ -154,7 +145,7 @@ class ReadProtectionsControllerSpec
           .thenReturn(testExistingProtectionsDisplayModel)
 
         await(controller.saveActiveProtection(None)(using fakeRequest)) shouldBe None
-        verify(mockSessionCacheService, times(0)).saveOpenProtection(any())(any())
+        verify(mockSessionCacheService, times(0)).saveOpenProtection(any())(using any())
       }
     }
 
@@ -168,7 +159,7 @@ class ReadProtectionsControllerSpec
         mockCacheSave()
 
         await(controller.saveActiveProtection(Some(individualProtection2016))(using fakeRequest)) shouldBe defined
-        verify(mockSessionCacheService).saveOpenProtection(eqTo(individualProtection2016))(any())
+        verify(mockSessionCacheService).saveOpenProtection(eqTo(individualProtection2016))(using any())
       }
     }
   }

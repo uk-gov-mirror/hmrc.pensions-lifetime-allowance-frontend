@@ -17,35 +17,27 @@
 package controllers
 
 import auth.helpers.AuthMocks
-import config.*
 import models.pla.AmendableProtectionType
 import models.pla.request.AmendProtectionRequestStatus
-import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.stream.Materializer
 import org.mockito.ArgumentMatchers.any
 import play.api.i18n.Messages
-import play.api.mvc.{AnyContent, Result}
+import play.api.mvc.{AnyContentAsEmpty, Result}
 import play.api.test.FakeRequest
 import play.api.test.Helpers.*
-import services.SessionCacheService
 import testHelpers.*
 import testdata.AmendProtectionModelTestData
-import uk.gov.hmrc.govukfrontend.views.html.components.FormWithCSRF
 import views.html.pages.amends.*
 import views.html.pages.fallback.technicalError
 
-import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 
 class AmendsPensionWorthBeforeControllerSpec
     extends FakeApplication
-    with MockitoSugar
     with MockSessionCacheService
-    with BeforeAndAfterEach
     with AuthMocks
     with AmendProtectionModelTestData {
 
-  private val fakeRequest: FakeRequest[AnyContent] = FakeRequest()
+  private val fakeRequest: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
 
   private val messages: Messages = mcc.messagesApi.preferred(fakeRequest)
 
@@ -59,14 +51,6 @@ class AmendsPensionWorthBeforeControllerSpec
   private val amendIP14PensionsWorthBeforeView: amendIP14PensionsWorthBefore =
     inject[amendIP14PensionsWorthBefore]
 
-  private val mockEnv: Environment = mock[Environment]
-
-  override def beforeEach(): Unit = {
-    super.beforeEach()
-
-    reset(mockEnv)
-  }
-
   private val controller = new AmendsPensionWorthBeforeController(
     mockSessionCacheService,
     mcc,
@@ -75,10 +59,6 @@ class AmendsPensionWorthBeforeControllerSpec
     amendIP16PensionsWorthBeforeView,
     amendIP14PensionsWorthBeforeView
   )(using executionContext)
-
-  private val sessionId: String  = UUID.randomUUID.toString
-  private val mockUsername       = "mockuser"
-  private val mockUserId: String = "/auth/oid/" + mockUsername
 
   "AmendsPensionWorthBeforeController" must {
 
